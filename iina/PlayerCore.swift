@@ -233,11 +233,6 @@ class PlayerCore: NSObject {
     mpv.mpvInit()
   }
 
-  func startMPVOpenGLCB(_ videoView: VideoView) {
-    let mpvGLContext = mpv.mpvInitCB()
-    videoView.mpvGLContext = OpaquePointer(mpvGLContext)
-  }
-
   // unload main window video view
   func unloadMainWindowVideoView() {
     guard mainWindow.isWindowLoaded else { return }

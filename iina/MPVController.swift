@@ -37,6 +37,7 @@ protocol MPVEventDelegate {
 class MPVController: NSObject {
   // The mpv_handle
   var mpv: OpaquePointer!
+  var mpvRenderContext: OpaquePointer?
 
   var mpvClientName: UnsafePointer<Int8>!
   var mpvVersion: String!
@@ -334,19 +335,12 @@ class MPVController: NSObject {
 
     // Set options that can be override by user's config. mpv will log user config when initialize,
     // so we put them here.
-    chkErr(mpv_set_property_string(mpv, MPVOption.Video.vo, "opengl-cb"))
+    chkErr(mpv_set_property_string(mpv, MPVOption.Video.vo, "libmpv"))
     chkErr(mpv_set_property_string(mpv, MPVOption.Window.keepaspect, "no"))
-    chkErr(mpv_set_property_string(mpv, MPVOption.Video.openglHwdecInterop, "auto"))
+    chkErr(mpv_set_property_string(mpv, MPVOption.Video.gpuHwdecInterop, "auto"))
 
     // get version
     mpvVersion = getString(MPVProperty.mpvVersion)
-  }
-
-  func mpvInitCB() -> UnsafeMutableRawPointer {
-    // Get opengl-cb context.
-    let mpvGL = mpv_get_sub_api(mpv, MPV_SUB_API_OPENGL_CB)!;
-
-    return mpvGL
   }
 
   // Basically send quit to mpv
@@ -506,7 +500,7 @@ class MPVController: NSObject {
       if quitByMPV {
         NSApp.terminate(nil)
       } else {
-        mpv_detach_destroy(mpv)
+        mpv_destroy(mpv)
         mpv = nil
       }
 

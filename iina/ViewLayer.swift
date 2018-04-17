@@ -34,6 +34,8 @@ class ViewLayer: CAOpenGLLayer {
 
   lazy var mpvGLQueue: DispatchQueue = DispatchQueue(label: "com.colliderli.iina.mpvgl")
 
+  private var fbo: GLint = 1
+
   override init() {
     super.init()
     isOpaque = true
@@ -59,11 +61,20 @@ class ViewLayer: CAOpenGLLayer {
     fatalError("init(coder:) has not been implemented")
   }
 
-  func initMpvStuff() {
+  func initMPVRendering() {
     // Initialize the mpv OpenGL state.
-    mpv_opengl_cb_init_gl(videoView.mpvGLContext, nil, mpvGetOpenGL, nil)
-    // Set the callback that notifies you when a new video frame is available, or requires a redraw.
-    mpv_opengl_cb_set_update_callback(videoView.mpvGLContext, mpvUpdateCallback, mutableRawPointerOf(obj: self))
+    let mpv = videoView.player.mpv!
+    let apiType = UnsafeMutableRawPointer(mutating: (MPV_RENDER_API_TYPE_OPENGL as NSString).utf8String)
+    var openGLInitParams = mpv_opengl_init_params(get_proc_address: mpvGetOpenGL,
+                                                  get_proc_address_ctx: nil,
+                                                  extra_exts: nil)
+    var params = [
+      mpv_render_param(type: MPV_RENDER_PARAM_API_TYPE, data: apiType),
+      mpv_render_param(type: MPV_RENDER_PARAM_OPENGL_INIT_PARAMS, data: &openGLInitParams),
+      mpv_render_param()
+    ]
+    mpv_render_context_create(&mpv.mpvRenderContext, mpv.mpv, &params)
+    mpv_render_context_set_update_callback(mpv.mpvRenderContext!, mpvUpdateCallback, mutableRawPointerOf(obj: self))
   }
 
   override func copyCGLPixelFormat(forDisplayMask mask: UInt32) -> CGLPixelFormatObj {
@@ -127,6 +138,8 @@ class ViewLayer: CAOpenGLLayer {
   }
 
   override func draw(inCGLContext ctx: CGLContextObj, pixelFormat pf: CGLPixelFormatObj, forLayerTime t: CFTimeInterval, displayTime ts: UnsafePointer<CVTimeStamp>?) {
+    let mpv = videoView.player.mpv!
+
     videoView.uninitLock.lock()
     
     guard !videoView.isUninited else {
@@ -143,9 +156,21 @@ class ViewLayer: CAOpenGLLayer {
     glGetIntegerv(GLenum(GL_DRAW_FRAMEBUFFER_BINDING), &i)
     var dims: [GLint] = [0, 0, 0, 0]
     glGetIntegerv(GLenum(GL_VIEWPORT), &dims);
+    var flip: CInt = 1
 
-    if let context = videoView.mpvGLContext {
-      mpv_opengl_cb_draw(context, i, dims[2], -dims[3])
+    if let context = mpv.mpvRenderContext {
+      fbo = i != 0 ? i : fbo
+
+      var data = mpv_opengl_fbo(fbo: Int32(fbo),
+                                w: Int32(dims[2]),
+                                h: Int32(dims[3]),
+                                internal_format: 0)
+      var params: [mpv_render_param] = [
+        mpv_render_param(type: MPV_RENDER_PARAM_OPENGL_FBO, data: &data),
+        mpv_render_param(type: MPV_RENDER_PARAM_FLIP_Y, data: &flip),
+        mpv_render_param()
+      ]
+      mpv_render_context_render(context, &params);
       ignoreGLError()
     } else {
       glClearColor(0, 0, 0, 1)
@@ -156,8 +181,8 @@ class ViewLayer: CAOpenGLLayer {
     CGLUnlockContext(ctx)
     videoView.uninitLock.unlock()
 
-    if let context = videoView.mpvGLContext {
-      mpv_opengl_cb_report_flip(context, 0)
+    if let context = mpv.mpvRenderContext {
+      mpv_render_context_report_swap(context)
     }
   }
 

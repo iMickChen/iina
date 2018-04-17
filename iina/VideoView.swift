@@ -19,13 +19,6 @@ class VideoView: NSView {
     return layer
   }()
 
-  /** The mpv opengl-cb context */
-  var mpvGLContext: OpaquePointer! {
-    didSet {
-      videoLayer.initMpvStuff()
-    }
-  }
-
   var videoSize: NSSize?
 
   var isUninited = false
@@ -66,6 +59,7 @@ class VideoView: NSView {
   }
 
   func uninit() {
+    let mpv = player.mpv!
     uninitLock.lock()
     
     guard !isUninited else {
@@ -73,8 +67,8 @@ class VideoView: NSView {
       return
     }
     
-    mpv_opengl_cb_set_update_callback(mpvGLContext, nil, nil)
-    mpv_opengl_cb_uninit_gl(mpvGLContext)
+    mpv_render_context_set_update_callback(mpv.mpvRenderContext!, nil, nil)
+    mpv_render_context_free(mpv.mpvRenderContext!)
     isUninited = true
     uninitLock.unlock()
   }
