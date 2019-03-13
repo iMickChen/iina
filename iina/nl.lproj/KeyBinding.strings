@@ -24,12 +24,12 @@
 "cmd.playlist-remove" = "Verwijder huidige";
 "cmd.playlist-shuffle" = "Shuffle";
 "cmd.quit" = "Afsluiten";
-"cmd.quit-watch-later" = "Afsluiten (onthoud vooruitgang)";
-"cmd.revert-seek" = "Terugspoelen";
+"cmd.quit-watch-later" = "Afsluiten (onthoud voortgang)";
+"cmd.revert-seek" = "Door- of terugspoelen terugdraaien";
 "cmd.run" = "Voer uit";
 "cmd.screenshot" = "Schermafbeelding";
 "cmd.screenshot-to-file" = "Schermafbeelding naar bestand";
-"cmd.seek" = "Doorspoelen";
+"cmd.seek" = "Door- of terugspoelen";
 "cmd.set" = "Stel in";
 "cmd.stop" = "Stop";
 "cmd.sub-seek" = "Ondertitel door- of terugspoelen";
@@ -39,6 +39,7 @@
 "iina.bigger-window" = "Groter venster";
 "iina.chapter-panel" = "Hoofdstukken paneel";
 "iina.delete-current-file" = "Verwijder huidige bestand";
+"iina.delete-current-file-hard" = "Verwijder huidige bestand permanent";
 "iina.find-online-subs" = "Zoek online naar ondertitels";
 "iina.fit-to-screen" = "Pas aan naar schermgrootte";
 "iina.flip" = "Omdraaien";

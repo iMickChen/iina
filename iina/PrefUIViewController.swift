@@ -7,7 +7,6 @@
 //
 
 import Cocoa
-import MASPreferences
 
 fileprivate let SizeWidthTag = 0
 fileprivate let SizeHeightTag = 1
@@ -19,37 +18,44 @@ fileprivate let SideTopTag = 0
 fileprivate let SideBottomTag = 1
 
 @objcMembers
-class PrefUIViewController: NSViewController, MASPreferencesViewController {
+class PrefUIViewController: PreferenceViewController, PreferenceWindowEmbeddable {
 
   override var nibName: NSNib.Name {
     return NSNib.Name("PrefUIViewController")
   }
 
-  var viewIdentifier: String = "PrefUIViewController"
+  var preferenceTabTitle: String {
+    return NSLocalizedString("preference.ui", comment: "UI")
+  }
 
-  var toolbarItemImage: NSImage? {
+  var preferenceTabImage: NSImage {
+    return NSImage(named: NSImage.Name("pref_ui"))!
+  }
+
+  static var oscToolbarButtons: [Preference.ToolBarButton] {
     get {
-      return #imageLiteral(resourceName: "toolbar_play")
+      return (Preference.array(for: .controlBarToolbarButtons) as? [Int] ?? []).compactMap(Preference.ToolBarButton.init(rawValue:))
     }
   }
 
-  var toolbarItemLabel: String? {
-    get {
-      view.layoutSubtreeIfNeeded()
-      return NSLocalizedString("preference.ui", comment: "UI")
-    }
+  override var sectionViews: [NSView] {
+    return [sectionAppearanceView, sectionWindowView, sectionOSCView, sectionOSDView, sectionThumbnailView, sectionPictureInPictureView]
   }
-
-  var hasResizableWidth: Bool = false
-  var hasResizableHeight: Bool = false
 
   private let toolbarSettingsSheetController = PrefOSCToolbarSettingsSheetController()
 
+  @IBOutlet var sectionAppearanceView: NSView!
+  @IBOutlet var sectionWindowView: NSView!
+  @IBOutlet var sectionOSCView: NSView!
+  @IBOutlet var sectionOSDView: NSView!
+  @IBOutlet var sectionThumbnailView: NSView!
+  @IBOutlet var sectionPictureInPictureView: NSView!
+    
+  @IBOutlet weak var themeMenu: NSMenu!
   @IBOutlet weak var oscPreviewImageView: NSImageView!
   @IBOutlet weak var oscPositionPopupButton: NSPopUpButton!
   @IBOutlet weak var oscToolbarStackView: NSStackView!
-  @IBOutlet weak var thumbCacheSizeLabel: NSTextField!
-  
+
   @IBOutlet weak var windowSizeCheckBox: NSButton!
   @IBOutlet weak var windowSizeTypePopUpButton: NSPopUpButton!
   @IBOutlet weak var windowSizeValueTextField: NSTextField!
@@ -67,21 +73,35 @@ class PrefUIViewController: NSViewController, MASPreferencesViewController {
   @IBOutlet weak var windowResizeAlwaysButton: NSButton!
   @IBOutlet weak var windowResizeOnlyWhenOpenButton: NSButton!
   @IBOutlet weak var windowResizeNeverButton: NSButton!
-
-
+  
+  @IBOutlet weak var pipDoNothing: NSButton!
+  @IBOutlet weak var pipHideWindow: NSButton!
+  @IBOutlet weak var pipMinimizeWindow: NSButton!
+  
   override func viewDidLoad() {
     super.viewDidLoad()
     oscPositionPopupBtnAction(oscPositionPopupButton)
     oscToolbarStackView.wantsLayer = true
-    oscToolbarStackView.layer?.backgroundColor = NSColor(calibratedWhite: 0.5, alpha: 0.2).cgColor
-    oscToolbarStackView.layer?.cornerRadius = 4
     updateOSCToolbarButtons()
     setupGeometryRelatedControls()
     setupResizingRelatedControls()
+    setupPipBehaviorRelatedControls()
+
+    let removeThemeMenuItemWithTag = { (tag: Int) in
+      if let item = self.themeMenu.item(withTag: tag) {
+        self.themeMenu.removeItem(item)
+      }
+    }
+    if #available(macOS 10.14, *) {
+      removeThemeMenuItemWithTag(Preference.Theme.mediumLight.rawValue)
+      removeThemeMenuItemWithTag(Preference.Theme.ultraDark.rawValue)
+    } else {
+      removeThemeMenuItemWithTag(Preference.Theme.system.rawValue)
+    }
   }
 
   @IBAction func oscPositionPopupBtnAction(_ sender: NSPopUpButton) {
-    var name: String
+    var name: NSImage.Name
     switch sender.selectedTag() {
     case 0:
       name = "osc_float"
@@ -92,16 +112,7 @@ class PrefUIViewController: NSViewController, MASPreferencesViewController {
     default:
       name = "osc_float"
     }
-    oscPreviewImageView.image = NSImage(named: NSImage.Name(rawValue: name))
-  }
-
-  @IBAction func clearCacheBtnAction(_ sender: AnyObject) {
-    if Utility.quickAskPanel("clear_cache") {
-      try? FileManager.default.removeItem(atPath: Utility.thumbnailCacheURL.path)
-      Utility.createDirIfNotExist(url: Utility.thumbnailCacheURL)
-      updateThumbnailCacheStat()
-      Utility.showAlert("clear_cache.success", style: .informational)
-    }
+    oscPreviewImageView.image = NSImage(named: name)
   }
 
   @IBAction func updateGeometryValue(_ sender: AnyObject) {
@@ -134,8 +145,15 @@ class PrefUIViewController: NSViewController, MASPreferencesViewController {
     Preference.set(sender.tag, for: .resizeWindowTiming)
   }
 
+  @IBAction func setupPipBehaviorRelatedControls(_ sender: NSButton) {
+    Preference.set(sender.tag, for: .windowBehaviorWhenPip)
+  }
+
   @IBAction func customizeOSCToolbarAction(_ sender: Any) {
-    view.window?.beginSheet(toolbarSettingsSheetController.window!) { _ in
+    toolbarSettingsSheetController.currentItemsView?.initItems(fromItems: PrefUIViewController.oscToolbarButtons)
+    toolbarSettingsSheetController.currentButtonTypes = PrefUIViewController.oscToolbarButtons
+    view.window?.beginSheet(toolbarSettingsSheetController.window!) { response in
+      guard response == .OK else { return }
       let newItems = self.toolbarSettingsSheetController.currentButtonTypes
       let array = newItems.map { $0.rawValue }
       Preference.set(array, for: .controlBarToolbarButtons)
@@ -143,27 +161,17 @@ class PrefUIViewController: NSViewController, MASPreferencesViewController {
     }
   }
 
-  override func viewDidAppear() {
-    DispatchQueue.main.async {
-      self.updateThumbnailCacheStat()
-    }
-  }
-
   private func updateOSCToolbarButtons() {
     oscToolbarStackView.views.forEach { oscToolbarStackView.removeView($0) }
-    let buttons = (Preference.array(for: .controlBarToolbarButtons) as? [Int] ?? []).compactMap(Preference.ToolBarButton.init(rawValue:))
+    let buttons = PrefUIViewController.oscToolbarButtons
     for buttonType in buttons {
       let button = NSImageView()
       button.image = buttonType.image()
+      button.translatesAutoresizingMaskIntoConstraints = false
+      let buttonWidth = buttons.count == 5 ? "20" : "24"
+      Utility.quickConstraints(["H:[btn(\(buttonWidth))]", "V:[btn(24)]"], ["btn": button])
       oscToolbarStackView.addView(button, in: .trailing)
-      Utility.quickConstraints(["H:[btn(24)]", "V:[btn(24)]"], ["btn": button])
     }
-
-    toolbarSettingsSheetController.currentButtonTypes = buttons
-  }
-
-  private func updateThumbnailCacheStat() {
-    thumbCacheSizeLabel.stringValue = FileSize.format(CacheManager.shared.getCacheSize(), unit: .b)
   }
 
   private func setupGeometryRelatedControls() {
@@ -218,7 +226,30 @@ class PrefUIViewController: NSViewController, MASPreferencesViewController {
       .first { $0.tag == resizeOption.rawValue }?.state = .on
   }
 
+  private func setupPipBehaviorRelatedControls() {
+    let pipBehaviorOption = Preference.enum(for: .windowBehaviorWhenPip) as Preference.WindowBehaviorWhenPip
+    ([pipDoNothing, pipHideWindow, pipMinimizeWindow] as [NSButton])
+        .first { $0.tag == pipBehaviorOption.rawValue }?.state = .on
+  }
+
   private func setSubViews(of view: NSBox, enabled: Bool) {
     view.contentView?.subviews.forEach { ($0 as? NSControl)?.isEnabled = enabled }
   }
 }
+
+@objc(ResizeTimingTransformer) class ResizeTimingTransformer: ValueTransformer {
+
+  static override func allowsReverseTransformation() -> Bool {
+    return false
+  }
+
+  static override func transformedValueClass() -> AnyClass {
+    return NSNumber.self
+  }
+
+  override func transformedValue(_ value: Any?) -> Any? {
+    guard let timing = value as? NSNumber else { return nil }
+    return timing != 2
+  }
+}
+

@@ -18,11 +18,11 @@ struct AppData {
 //  static let availableSpeedValues: [Double] = [-32, -16, -8, -4, -2, -1, 1, 2, 4, 8, 16, 32]
   // Stopgap for https://github.com/mpv-player/mpv/issues/4000
   static let availableSpeedValues: [Double] = [0.03125, 0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16, 32]
-  
+
   /** min/max speed for playback **/
   static let minSpeed = 0.25
   static let maxSpeed = 16.0
-  
+
   /** generate aspect and crop options in menu */
   static let aspects: [String] = ["4:3", "5:4", "16:9", "16:10", "1:1", "3:2", "2.21:1", "2.35:1", "2.39:1"]
 
@@ -44,15 +44,20 @@ struct AppData {
   static let thumbnailCacheFolder = "thumb_cache"
 
   static let githubLink = "https://github.com/lhc70000/iina"
+  static let contributorsLink = "https://github.com/lhc70000/iina/graphs/contributors"
   static let wikiLink = "https://github.com/lhc70000/iina/wiki"
   static let websiteLink = "https://lhc70000.github.io/iina/"
   static let emailLink = "developers@iina.io"
+  static let ytdlHelpLink = "https://github.com/rg3/youtube-dl/blob/master/README.md#readme"
   static let appcastLink = "https://www.iina.io/appcast.xml"
   static let appcastBetaLink = "https://www.iina.io/appcast-beta.xml"
   static let assrtRegisterLink = "https://secure.assrt.net/user/register.xml?redir=http%3A%2F%2Fassrt.net%2Fusercp.php"
+  static let chromeExtensionLink = "https://chrome.google.com/webstore/detail/open-in-iina/pdnojahnhpgmdhjdhgphgdcecehkbhfo"
+  static let firefoxExtensionLink = "https://addons.mozilla.org/addon/open-in-iina-x"
 
   static let widthWhenNoVideo = 480
   static let heightWhenNoVideo = 480
+  static let sizeWhenNoVideo = NSSize(width: widthWhenNoVideo, height: heightWhenNoVideo)
 }
 
 
@@ -91,6 +96,9 @@ extension Notification.Name {
   static let iinaMainWindowChanged = Notification.Name("IINAMainWindowChanged")
   static let iinaPlaylistChanged = Notification.Name("IINAPlaylistChanged")
   static let iinaTracklistChanged = Notification.Name("IINATracklistChanged")
+  static let iinaVIDChanged = Notification.Name("iinaVIDChanged")
+  static let iinaAIDChanged = Notification.Name("iinaAIDChanged")
+  static let iinaSIDChanged = Notification.Name("iinaSIDChanged")
   static let iinaMediaTitleChanged = Notification.Name("IINAMediaTitleChanged")
   static let iinaVFChanged = Notification.Name("IINAVfChanged")
   static let iinaAFChanged = Notification.Name("IINAAfChanged")

@@ -29,13 +29,7 @@ guard FileManager.default.fileExists(atPath: iinaPath) else {
 let task = Process()
 task.launchPath = iinaPath
 
-guard let stdin = InputStream(fileAtPath: "/dev/stdin") else {
-  print("Cannot open stdin.")
-  exit(1)
-}
-stdin.open()
-
-let isStdin = stdin.hasBytesAvailable
+var keepRunning = false
 
 // Check arguments
 
@@ -52,16 +46,48 @@ if userArgs.contains(where: { $0 == "--help" || $0 == "-h" }) {
             Example: --mpv-volume=20 --mpv-resume-playback=no
     --separate-windows | -w:
             Open all files in separate windows.
+    --stdin, --no-stdin:
+            You may also pipe to stdin directly. Sometimes iina-cli can detect whether
+            stdin has file, but sometimes not. Therefore it's recommended to always
+            supply --stdin when piping to iina, and --no-stdin when you are not intend
+            to use stdin.
+    --keep-running:
+            Normally iina-cli launches IINA and quits immediately. Supply this option
+            if you would like to keep it running until the main application exits.
+    --pip:
+            Enter Picture-in-Picture after opening the media.
     --help | -h:
             Print this message.
 
-    MPV Option:
+    mpv Option:
     Raw mpv options without --mpv- prefix. All mpv options are supported here.
     Example: --volume=20 --no-resume-playback
-
-    You may also pipe to stdin directly.
     """)
   exit(0)
+}
+
+var isStdin = false
+var userSpecifiedStdin = false
+
+for arg in userArgs {
+  if arg == "--stdin" {
+    isStdin = true
+    userSpecifiedStdin = true
+  } else if arg == "--no-stdin" {
+    isStdin = false
+    userSpecifiedStdin = true
+  } else if arg == "--" {
+    break
+  }
+}
+
+if (!userSpecifiedStdin) {
+  guard let stdin = InputStream(fileAtPath: "/dev/stdin") else {
+    print("Cannot open stdin.")
+    exit(1)
+  }
+  stdin.open()
+  isStdin = stdin.hasBytesAvailable
 }
 
 if let dashIndex = userArgs.index(of: "--") {
@@ -87,9 +113,11 @@ userArgs = userArgs.map { arg in
     return fileURL.path
   } else if arg == "-w" {
     return "--separate-windows"
-  } else {
-    return arg
   }
+  if arg == "--keep-running" {
+    keepRunning = true
+  }
+  return arg
 }
 
 // Handle stdin
@@ -97,7 +125,9 @@ userArgs = userArgs.map { arg in
 if isStdin {
   task.standardInput = FileHandle.standardInput
   task.standardOutput = FileHandle.standardOutput
-  userArgs.insert("--stdin", at: 0)
+  if !userSpecifiedStdin {
+    userArgs.insert("--stdin", at: 0)
+  }
 } else {
   task.standardOutput = nil
   task.standardError = nil
@@ -119,13 +149,13 @@ func terminateTaskIfRunning() {
 }
 
 atexit {
-  if isStdin {
+  if isStdin || keepRunning {
     terminateTaskIfRunning()
   }
 }
 
 task.launch()
 
-if isStdin {
+if isStdin || keepRunning {
   task.waitUntilExit()
 }

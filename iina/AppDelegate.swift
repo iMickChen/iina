@@ -8,7 +8,6 @@
 
 import Cocoa
 import MediaPlayer
-import MASPreferences
 import Sparkle
 
 /** Max time interval for repeated `application(_:openFile:)` calls. */
@@ -24,7 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
   /** Whether performed some basic initialization, like bind menu items. */
   var isReady = false
-  /** 
+  /**
    Becomes true once `application(_:openFile:)` or `droppedText()` is called.
    Mainly used to distinguish normal launches from others triggered by drag-and-dropping files.
    */
@@ -42,6 +41,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
   // Windows
 
+  lazy var openURLWindow: OpenURLWindowController = OpenURLWindowController()
   lazy var aboutWindow: AboutWindowController = AboutWindowController()
   lazy var fontPicker: FontPickerWindowController = FontPickerWindowController()
   lazy var inspector: InspectorWindowController = InspectorWindowController()
@@ -60,7 +60,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }()
 
   lazy var preferenceWindowController: NSWindowController = {
-    return MASPreferencesWindowController(viewControllers: [
+    return PreferenceWindowController(viewControllers: [
       PrefGeneralViewController(),
       PrefUIViewController(),
       PrefCodecViewController(),
@@ -69,7 +69,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       PrefControlViewController(),
       PrefKeyBindingViewController(),
       PrefAdvancedViewController(),
-    ], title: NSLocalizedString("preference.title", comment: "Preference"))
+      PrefUtilsViewController(),
+    ])
   }()
 
   @IBOutlet weak var menuController: MenuController!
@@ -77,7 +78,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   @IBOutlet weak var dockMenu: NSMenu!
 
   private func getReady() {
-    registerUserDefaultValues()
     menuController.bindMenuItems()
     PlayerCore.loadKeyBindings()
     isReady = true
@@ -86,6 +86,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   // MARK: - App Delegate
 
   func applicationWillFinishLaunching(_ notification: Notification) {
+    registerUserDefaultValues()
+    Logger.log("App will launch")
+
     // register for url event
     NSAppleEventManager.shared().setEventHandler(self, andSelector: #selector(self.handleURLEvent(event:withReplyEvent:)), forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
 
@@ -104,6 +107,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var iinaArgFilenames: [String] = []
     var dropNextArg = false
 
+    Logger.log("Got arguments \(arguments)")
     for arg in arguments {
       if dropNextArg {
         dropNextArg = false
@@ -123,6 +127,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       }
     }
 
+    Logger.log("IINA arguments: \(iinaArgs)")
+    Logger.log("Filenames from arguments: \(iinaArgFilenames)")
     commandLineStatus.parseArguments(iinaArgs)
 
     let (version, build) = Utility.iinaVersion()
@@ -140,6 +146,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationDidFinishLaunching(_ aNotification: Notification) {
+    Logger.log("App launched")
+
     if !isReady {
       getReady()
     }
@@ -155,25 +163,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     if #available(macOS 10.13, *) {
       if RemoteCommandController.useSystemMediaControl {
+        Logger.log("Setting up MediaPlayer integration")
         RemoteCommandController.setup()
-        NowPlayingInfoManager.updateState(.playing)
+        NowPlayingInfoManager.updateState(.unknown)
       }
     }
+
+    let _ = PlayerCore.first
 
     // if have pending open request
     if let url = pendingURL {
       parsePendingURL(url)
     }
 
-    let _ = PlayerCore.first
-
     if !commandLineStatus.isCommandLine {
       // check whether showing the welcome window after 0.1s
       Timer.scheduledTimer(timeInterval: TimeInterval(0.1), target: self, selector: #selector(self.checkForShowingInitialWindow), userInfo: nil, repeats: false)
     } else {
+      var lastPlayerCore: PlayerCore? = nil
       let getNewPlayerCore = { () -> PlayerCore in
         let pc = PlayerCore.newPlayerCore
         self.commandLineStatus.assignMPVArguments(to: pc)
+        lastPlayerCore = pc
         return pc
       }
       if commandLineStatus.isStdin {
@@ -181,20 +192,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       } else {
         let validFileURLs: [URL] = commandLineStatus.filenames.compactMap { filename in
           if Regex.url.matches(filename) {
-            return URL(string: filename)
+            return URL(string: filename.addingPercentEncoding(withAllowedCharacters: .urlAllowed) ?? filename)
           } else {
             return FileManager.default.fileExists(atPath: filename) ? URL(fileURLWithPath: filename) : nil
           }
         }
         if commandLineStatus.openSeparateWindows {
           validFileURLs.forEach { url in
-            let _ = getNewPlayerCore().openURLs([url])
+            getNewPlayerCore().openURL(url)
           }
         } else {
-          let _ = getNewPlayerCore().openURLs(validFileURLs)
+          getNewPlayerCore().openURLs(validFileURLs)
         }
       }
+
+      // enter PIP
+      if #available(OSX 10.12, *), let pc = lastPlayerCore, commandLineStatus.enterPIP {
+        pc.mainWindow.enterPIP()
+      }
     }
+
+    NSRunningApplication.current.activate(options: [.activateIgnoringOtherApps, .activateAllWindows])
 
     NSApplication.shared.servicesProvider = self
   }
@@ -207,12 +225,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
   }
 
-  private func showWelcomeWindow() {
+  private func showWelcomeWindow(checkingForUpdatedData: Bool = false) {
     let actionRawValue = Preference.integer(for: .actionAfterLaunch)
     let action: Preference.ActionAfterLaunch = Preference.ActionAfterLaunch(rawValue: actionRawValue) ?? .welcomeWindow
     switch action {
     case .welcomeWindow:
-      PlayerCore.first.initialWindow.showWindow(nil)
+      let window = PlayerCore.first.initialWindow!
+      window.showWindow(nil)
+      if checkingForUpdatedData {
+        window.loadLastPlaybackInfo()
+        window.reloadData()
+      }
     case .openPanel:
       openFile(self)
     default:
@@ -226,6 +249,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+    guard !PlayerCore.active.mainWindow.isWindowHidden else { return .terminateCancel }
+    Logger.log("App should terminate")
     for pc in PlayerCore.playerCores {
      pc.terminateMPV()
     }
@@ -234,9 +259,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
     guard !flag else { return true }
-    showWelcomeWindow()
-
+    Logger.log("Handle reopen")
+    showWelcomeWindow(checkingForUpdatedData: true)
     return true
+  }
+
+  func applicationWillTerminate(_ notification: Notification) {
+    Logger.log("App will terminate")
+    Logger.closeLogFile()
   }
 
   /**
@@ -266,7 +296,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let urls = pendingFilesForOpenFile.map { URL(fileURLWithPath: $0) }
 
     pendingFilesForOpenFile.removeAll()
-    if let openedFileCount = PlayerCore.activeOrNew.openURLs(urls), openedFileCount == 0 {
+    if PlayerCore.activeOrNew.openURLs(urls) == 0 {
       Utility.showAlert("nothing_to_open")
     }
   }
@@ -280,7 +310,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       PlayerCore.active.openURLString(url)
     }
   }
-  
+
   // MARK: - Dock menu
 
   func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
@@ -293,6 +323,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   @objc func handleURLEvent(event: NSAppleEventDescriptor, withReplyEvent replyEvent: NSAppleEventDescriptor) {
     openFileCalled = true
     guard let url = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue else { return }
+    Logger.log("URL event: \(url)")
     if isReady {
       parsePendingURL(url)
     } else {
@@ -300,18 +331,89 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
   }
 
+
+  /**
+   Parses the pending iina:// url.
+   - Parameter url: the pending URL.
+   - Note:
+   The iina:// URL scheme currently supports the following actions:
+
+   __/open__
+   - `url`: a url or string to open.
+   - `new_window`: 0 or 1 (default) to indicate whether open the media in a new window.
+   - `enqueue`: 0 (default) or 1 to indicate whether to add the media to the current playlist.
+   - `full_screen`: 0 (default) or 1 to indicate whether open the media and enter fullscreen.
+   - `pip`: 0 (default) or 1 to indicate whether open the media and enter pip.
+   - `mpv_*`: additional mpv options to be passed. e.g. `mpv_volume=20`.
+     Options starting with `no-` are not supported.
+   */
   private func parsePendingURL(_ url: String) {
-    guard let parsed = NSURLComponents(string: url) else { return }
-    // links
-    if let host = parsed.host, host == "weblink" {
-      guard let urlValue = (parsed.queryItems?.first { $0.name == "url" }?.value) else { return }
-      PlayerCore.active.openURLString(urlValue)
+    Logger.log("Parsing URL \(url)")
+    guard let parsed = URLComponents(string: url) else {
+      Logger.log("Cannot parse URL using URLComponents", level: .warning)
+      return
+    }
+
+    // handle url scheme
+    guard let host = parsed.host else { return }
+
+    if host == "open" || host == "weblink" {
+      // open a file or link
+      guard let queries = parsed.queryItems else { return }
+      let queryDict = [String: String](uniqueKeysWithValues: queries.map { ($0.name, $0.value ?? "") })
+
+      // url
+      guard let urlValue = queryDict["url"], !urlValue.isEmpty else {
+        Logger.log("Cannot find parameter \"url\", stopped")
+        return
+      }
+
+      // new_window
+      let player: PlayerCore
+      if let newWindowValue = queryDict["new_window"], newWindowValue == "0" {
+        player = PlayerCore.active
+      } else {
+        player = PlayerCore.newPlayerCore
+      }
+
+      // enqueue
+      if let enqueueValue = queryDict["enqueue"], enqueueValue == "1", !PlayerCore.lastActive.info.playlist.isEmpty {
+        PlayerCore.lastActive.addToPlaylist(urlValue)
+        PlayerCore.lastActive.postNotification(.iinaPlaylistChanged)
+        PlayerCore.lastActive.sendOSD(.addToPlaylist(1))
+      } else {
+        player.openURLString(urlValue)
+      }
+
+      // presentation options
+      if let fsValue = queryDict["full_screen"], fsValue == "1" {
+        // full_screeen
+        player.mpv.setFlag(MPVOption.Window.fullscreen, true)
+      } else if let pipValue = queryDict["pip"], pipValue == "1" {
+        // pip
+        if #available(OSX 10.12, *) {
+          player.mainWindow.enterPIP()
+        }
+      }
+
+      // mpv options
+      for query in queries {
+        if query.name.hasPrefix("mpv_") {
+          let mpvOptionName = String(query.name.dropFirst(4))
+          guard let mpvOptionValue = query.value else { continue }
+          Logger.log("Setting \(mpvOptionName) to \(mpvOptionValue)")
+          player.mpv.setString(mpvOptionName, mpvOptionValue)
+        }
+      }
+
+      Logger.log("Finished URL scheme handling")
     }
   }
 
   // MARK: - Menu actions
 
   @IBAction func openFile(_ sender: AnyObject) {
+    Logger.log("Menu - Open file")
     let panel = NSOpenPanel()
     panel.title = NSLocalizedString("alert.choose_media_file.title", comment: "Choose Media File")
     panel.canCreateDirectories = false
@@ -326,30 +428,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       }
       let isAlternative = (sender as? NSMenuItem)?.tag == AlternativeMenuItemTag
       let playerCore = PlayerCore.activeOrNewForMenuAction(isAlternative: isAlternative)
-      if let openedFileCount = playerCore.openURLs(panel.urls), openedFileCount == 0 {
+      if playerCore.openURLs(panel.urls) == 0 {
         Utility.showAlert("nothing_to_open")
       }
     }
   }
 
   @IBAction func openURL(_ sender: AnyObject) {
-    let panel = NSAlert()
-    panel.messageText = NSLocalizedString("alert.open_url.title", comment: "Open URL")
-    panel.informativeText = NSLocalizedString("alert.open_url.message", comment: "Please enter the URL:")
-    let inputViewController = OpenURLAccessoryViewController()
-    panel.accessoryView = inputViewController.view
-    panel.addButton(withTitle: NSLocalizedString("general.ok", comment: "OK"))
-    panel.addButton(withTitle: NSLocalizedString("general.cancel", comment: "Cancel"))
-    panel.window.initialFirstResponder = inputViewController.urlField
-    let response = panel.runModal()
-    if response == .alertFirstButtonReturn {
-      if let url = inputViewController.url {
-        let playerCore = PlayerCore.activeOrNewForMenuAction(isAlternative: sender.tag == AlternativeMenuItemTag)
-        playerCore.openURL(url, isNetworkResource: true)
-      } else {
-        Utility.showAlert("wrong_url_format")
-      }
-    }
+    Logger.log("Menu - Open URL")
+    openURLWindow.isAlternativeAction = sender.tag == AlternativeMenuItemTag
+    openURLWindow.showWindow(nil)
+    openURLWindow.resetFields()
   }
 
   @IBAction func menuNewWindow(_ sender: Any) {
@@ -401,10 +490,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     NSWorkspace.shared.open(URL(string: AppData.websiteLink)!)
   }
 
-  @IBAction func setSelfAsDefaultAction(_ sender: AnyObject) {
-    Utility.setSelfAsDefaultForAllFileTypes()
-  }
-
   private func registerUserDefaultValues() {
     UserDefaults.standard.register(defaults: [String: Any](uniqueKeysWithValues: Preference.defaultPreference.map { ($0.0.rawValue, $0.1) }))
   }
@@ -416,6 +501,7 @@ struct CommandLineStatus {
   var isCommandLine = false
   var isStdin = false
   var openSeparateWindows = false
+  var enterPIP = false
   var mpvArguments: [(String, String)] = []
   var iinaArguments: [(String, String)] = []
   var filenames: [String] = []
@@ -424,7 +510,7 @@ struct CommandLineStatus {
     mpvArguments.removeAll()
     iinaArguments.removeAll()
     for arg in args {
-      let splitted = arg.dropFirst(2).split(separator: "=", maxSplits: 2)
+      let splitted = arg.dropFirst(2).split(separator: "=", maxSplits: 1)
       let name = String(splitted[0])
       if (name.hasPrefix("mpv-")) {
         // mpv args
@@ -446,6 +532,9 @@ struct CommandLineStatus {
         if name == "separate-windows" {
           openSeparateWindows = true
         }
+        if name == "pip" {
+          enterPIP = true
+        }
       }
     }
   }
@@ -457,7 +546,7 @@ struct CommandLineStatus {
   }
 }
 
-@available(OSX 10.13, *)
+@available(macOS 10.13, *)
 class RemoteCommandController {
   static let remoteCommand = MPRemoteCommandCenter.shared()
 

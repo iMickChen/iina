@@ -84,8 +84,8 @@ extension MainWindowController {
     //  10: smaller size
     //  11: bigger size
     let size = sender.tag
-    guard let window = window, !isInFullScreen else { return }
-    
+    guard let window = window, !fsState.isFullscreen else { return }
+
     let screenFrame = (window.screen ?? NSScreen.main!).visibleFrame
     let newFrame: NSRect
     let sizeMap: [Double] = [0.5, 1, 2]
@@ -132,7 +132,7 @@ extension MainWindowController {
   @objc func menuToggleFullScreen(_ sender: NSMenuItem) {
     toggleWindowFullScreen()
   }
-  
+
   @objc func menuSwitchToMiniPlayer(_ sender: NSMenuItem) {
     player.switchToMiniPlayer()
   }

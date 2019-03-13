@@ -9,9 +9,6 @@
 /* Class = "NSMenuItem"; title = "Top"; ObjectID = "1Tq-5k-o6R"; */
 "1Tq-5k-o6R.title" = "上";
 
-/* Class = "NSTabViewItem"; label = "General"; ObjectID = "29W-lw-0pD"; */
-"29W-lw-0pD.label" = "一般";
-
 /* Class = "NSButtonCell"; title = "Display subtitles in letterboxes while in full screen"; ObjectID = "2XY-Un-0Fg"; */
 "2XY-Un-0Fg.title" = "フルスクリーン時はレターボックス内に字幕を表示";
 
@@ -51,11 +48,17 @@
 /* Class = "NSBox"; title = "Shadow"; ObjectID = "BgE-Kk-MXC"; */
 "BgE-Kk-MXC.title" = "影";
 
+/* Class = "NSButtonCell"; title = "Search online subtitles automatically"; ObjectID = "C3p-uP-8u8"; */
+"C3p-uP-8u8.title" = "自動でオンライン字幕を検索する";
+
 /* Class = "NSTextFieldCell"; title = "Font:"; ObjectID = "C4C-XP-i2S"; */
 "C4C-XP-i2S.title" = "フォント";
 
 /* Class = "NSTextFieldCell"; title = " X:"; ObjectID = "CdS-9J-f2h"; */
 "CdS-9J-f2h.title" = " X:";
+
+/* Class = "NSTextFieldCell"; title = "Advanced"; ObjectID = "DUA-7H-Yje"; */
+"DUA-7H-Yje.title" = "詳細設定";
 
 /* Class = "NSMenuItem"; title = "Right"; ObjectID = "Gie-38-Kk4"; */
 "Gie-38-Kk4.title" = "右";
@@ -70,7 +73,7 @@
 "LiG-iV-AQK.title" = "その他:";
 
 /* Class = "NSTextFieldCell"; title = "Directories are separated by colons (:). Relative paths and wildcards (*) at the end are allowed."; ObjectID = "Luv-2B-9v8"; */
-"Luv-2B-9v8.title" = "フォルダはコロン（:）で区切られます。相対パスと末尾のワイルドカード（*）を使用できます。";
+"Luv-2B-9v8.title" = "ディレクトリはコロン (:) で区切られます。相対パスと末尾のワイルドカード (*) が使用できます。";
 
 /* Class = "NSTextFieldCell"; title = "Please enter a comma-separated list of strings."; ObjectID = "Mk1-sv-QB8"; */
 "Mk1-sv-QB8.title" = "文字列はカンマ区切りで入力してください。";
@@ -84,14 +87,11 @@
 /* Class = "NSTextFieldCell"; title = "Also search subtitles in following directories:"; ObjectID = "QsS-wD-2hY"; */
 "QsS-wD-2hY.title" = "字幕ファイルを探索するディレクトリ:";
 
-/* Class = "NSTabViewItem"; label = "Style and Position"; ObjectID = "R5q-Xd-PPr"; */
-"R5q-Xd-PPr.label" = "フォントと配置";
-
 /* Class = "NSTextFieldCell"; title = "Color:"; ObjectID = "SIh-Sv-6XI"; */
 "SIh-Sv-6XI.title" = "色:";
 
 /* Class = "NSTextFieldCell"; title = "Download subtitles from:"; ObjectID = "TPK-CJ-HX7"; */
-"TPK-CJ-HX7.title" = "字幕のダウンロード:";
+"TPK-CJ-HX7.title" = "字幕のダウンロード先:";
 
 /* Class = "NSTextFieldCell"; title = "Size:"; ObjectID = "Vbl-Im-3UI"; */
 "Vbl-Im-3UI.title" = "サイズ:";
@@ -99,17 +99,20 @@
 /* Class = "NSButtonCell"; title = "Login"; ObjectID = "WHk-sk-gmK"; */
 "WHk-sk-gmK.title" = "Login";
 
+/* Class = "NSTextFieldCell"; title = "Advanced"; ObjectID = "X7X-18-FJg"; */
+"X7X-18-FJg.title" = "詳細設定";
+
 /* Class = "NSMenuItem"; title = "Detect intelligently by IINA"; ObjectID = "XiL-eE-jah"; */
 "XiL-eE-jah.title" = "IINAによる自動選択";
 
 /* Class = "NSTextFieldCell"; title = "Default encoding:"; ObjectID = "Y75-4k-2Du"; */
-"Y75-4k-2Du.title" = "デフォルトエンコーディング:";
+"Y75-4k-2Du.title" = "デフォルトのエンコーディング:";
 
 /* Class = "NSTextFieldCell"; title = "This option will be stored as ISO 639-2 language code and will works for both mpv and opensubtitles."; ObjectID = "Z2M-dh-eq1"; */
 "Z2M-dh-eq1.title" = "ISO639-2の言語コードをカンマで区切って使用してください。\nこの設定はmpvとopensubtitlesの両方に適用されます。";
 
 /* Class = "NSTextFieldCell"; title = "Blur:"; ObjectID = "aO9-D6-KG8"; */
-"aO9-D6-KG8.title" = "ブラー:";
+"aO9-D6-KG8.title" = "ぼかし:";
 
 /* Class = "NSTextFieldCell"; title = "sans-serif"; ObjectID = "azJ-oz-BKZ"; */
 "azJ-oz-BKZ.title" = "sans-serif";
@@ -126,8 +129,8 @@
 /* Class = "NSTextFieldCell"; title = "Background:"; ObjectID = "eYO-c0-Rjp"; */
 "eYO-c0-Rjp.title" = "背景:";
 
-/* Class = "NSBox"; title = "Box"; ObjectID = "egf-g3-b7a"; */
-"egf-g3-b7a.title" = "Box";
+/* Class = "NSBox"; title = "Other Styles"; ObjectID = "egf-g3-b7a"; */
+"egf-g3-b7a.title" = "その他のスタイル";
 
 /* Class = "NSTextFieldCell"; title = "Override level:"; ObjectID = "gAq-Vr-hRY"; */
 "gAq-Vr-hRY.title" = "無視の度合い:";
@@ -135,8 +138,8 @@
 /* Class = "NSTextFieldCell"; title = "Size:"; ObjectID = "gkc-qt-sD9"; */
 "gkc-qt-sD9.title" = "サイズ:";
 
-/* Class = "NSButtonCell"; title = "𝐁"; ObjectID = "hEk-7E-10q"; */
-"hEk-7E-10q.title" = "𝐁";
+/* Class = "NSButtonCell"; title = "Bold"; ObjectID = "hEk-7E-10r"; */
+"hEk-7E-10r.title" = "太字";
 
 /* Class = "NSBox"; title = "Align"; ObjectID = "kvJ-Tj-KMb"; */
 "kvJ-Tj-KMb.title" = "整列";
@@ -153,8 +156,8 @@
 /* Class = "NSButtonCell"; title = "Choose..."; ObjectID = "nH7-kO-S15"; */
 "nH7-kO-S15.title" = "選択…";
 
-/* Class = "NSButtonCell"; title = "𝐼"; ObjectID = "pNF-Fw-QtY"; */
-"pNF-Fw-QtY.title" = "𝐼";
+/* Class = "NSButtonCell"; title = "Italic"; ObjectID = "pNF-Fw-QtW"; */
+"pNF-Fw-QtW.title" = "斜字";
 
 /* Class = "NSBox"; title = "Margin"; ObjectID = "pRe-wv-VVi"; */
 "pRe-wv-VVi.title" = "マージン";
@@ -177,6 +180,9 @@
 /* Class = "NSTextFieldCell"; title = "Color:"; ObjectID = "vDc-dw-liI"; */
 "vDc-dw-liI.title" = "色:";
 
+/* Class = "NSTextFieldCell"; title = "If enabled, IINA will automatically search online subtitles only for videos without loaded subtitles and longer than 20 mintues."; ObjectID = "vYb-qH-XkH"; */
+"vYb-qH-XkH.title" = "有効にすると字幕が読み込まれていない20分以上の動画の再生時に、IINAが自動でオンライン字幕を検索します。";
+
 /* Class = "NSTextFieldCell"; title = "Y:"; ObjectID = "xGf-fF-4Hx"; */
 "xGf-fF-4Hx.title" = "Y:";
 
@@ -186,7 +192,7 @@
 /* Class = "NSMenuItem"; title = "Subtitles containing media filename"; ObjectID = "y1E-JR-KRI"; */
 "y1E-JR-KRI.title" = "メディアファイル名の字幕を含む";
 
-/* Class = "NSTextFieldCell"; title = "Prefered language:"; ObjectID = "zaE-bH-XfT"; */
+/* Class = "NSTextFieldCell"; title = "Preferred language:"; ObjectID = "zaE-bH-XfT"; */
 "zaE-bH-XfT.title" = "優先言語:";
 
 /* Class = "NSMenuItem"; title = "Left"; ObjectID = "zml-kt-LN8"; */

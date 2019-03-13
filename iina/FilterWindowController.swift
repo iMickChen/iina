@@ -8,19 +8,13 @@
 
 import Cocoa
 
-class FilterWindowController: NSWindowController {
+class FilterWindowController: NSWindowController, NSWindowDelegate {
 
   override var windowNibName: NSNib.Name {
     return NSNib.Name("FilterWindowController")
   }
 
-  @objc let monospacedFont: NSFont = {
-    if #available(OSX 10.11, *) {
-      return NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
-    } else {
-      return NSFont.systemFont(ofSize: NSFont.systemFontSize)
-    }
-  }()
+  @objc let monospacedFont: NSFont = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
 
   @IBOutlet weak var splitView: NSSplitView!
   @IBOutlet weak var splitViewUpperView: NSView!
@@ -39,6 +33,7 @@ class FilterWindowController: NSWindowController {
   @IBOutlet weak var editFilterStringTextField: NSTextField!
   @IBOutlet weak var editFilterKeyRecordView: KeyRecordView!
   @IBOutlet weak var editFilterKeyRecordViewLabel: NSTextField!
+  @IBOutlet weak var removeButton: NSButton!
 
   var filterType: String!
 
@@ -51,6 +46,7 @@ class FilterWindowController: NSWindowController {
 
   override func windowDidLoad() {
     super.windowDidLoad()
+    window?.delegate = self
 
     // title
     window?.title = filterType == MPVProperty.af ? NSLocalizedString("filter.audio_filters", comment: "Audio Filters") : NSLocalizedString("filter.video_filters", comment: "Video Filters")
@@ -67,6 +63,8 @@ class FilterWindowController: NSWindowController {
 
     keyRecordView.delegate = self
     editFilterKeyRecordView.delegate = self
+
+    updateButtonStatus()
 
     // notifications
     let notiName: Notification.Name = filterType == MPVProperty.af ? .iinaAFChanged : .iinaVFChanged
@@ -102,20 +100,21 @@ class FilterWindowController: NSWindowController {
     NotificationCenter.default.removeObserver(self)
   }
 
-  func addFilter(_ filter: MPVFilter) {
+  func addFilter(_ filter: MPVFilter) -> Bool {
     if filterType == MPVProperty.vf {
       guard PlayerCore.active.addVideoFilter(filter) else {
-        Utility.showAlert("filter.incorrect")
-        return
+        Utility.showAlert("filter.incorrect", sheetWindow: window)
+        return false
       }
     } else {
       guard PlayerCore.active.addAudioFilter(filter) else {
-        Utility.showAlert("filter.incorrect")
-        return
+        Utility.showAlert("filter.incorrect", sheetWindow: window)
+        return false
       }
     }
     filters.append(filter)
     reloadTable()
+    return true
   }
 
   func saveFilter(_ filter: MPVFilter) {
@@ -149,6 +148,10 @@ class FilterWindowController: NSWindowController {
       if success {
         reloadTable()
         pc.sendOSD(.removeFilter)
+        // FIXME: For some reason, after removeFilterAction is called, tableViewSelectionDidChange(_:)
+        // for currentFiltersTableView is not called. This is a workaround to ensure
+        // tableViewSelectionDidChange(_:) is called.
+        currentFiltersTableView.deselectAll(self)
       }
     }
   }
@@ -206,14 +209,14 @@ extension FilterWindowController: NSTableViewDelegate, NSTableViewDataSource {
   func tableView(_ tableView: NSTableView, objectValueFor tableColumn: NSTableColumn?, row: Int) -> Any? {
     if tableView == currentFiltersTableView {
       if tableColumn?.identifier == .key {
-        return row.toStr()
+        return row.description
       } else if tableColumn?.identifier == .value {
-        return filters.at(row)?.stringFormat
+        return filters[at: row]?.stringFormat
       } else {
         return filterIsSaved[row]
       }
     } else {
-      return savedFilters.at(row)
+      return savedFilters[at: row]
     }
   }
 
@@ -225,9 +228,21 @@ extension FilterWindowController: NSTableViewDelegate, NSTableViewDataSource {
         filters[row] = newFilter
         setFilters()
       } else {
-        Utility.showAlert("filter.incorrect")
+        Utility.showAlert("filter.incorrect", sheetWindow: window)
       }
     }
+  }
+
+  func tableViewSelectionDidChange(_ notification: Notification) {
+    updateButtonStatus()
+  }
+
+  func windowDidBecomeKey(_ notification: Notification) {
+    updateButtonStatus()
+  }
+
+  private func updateButtonStatus() {
+    removeButton.isEnabled = currentFiltersTableView.selectedRow >= 0
   }
 
 }
@@ -300,11 +315,11 @@ class NewFilterSheetViewController: NSViewController, NSTableViewDelegate, NSTab
   }
 
   func tableView(_ tableView: NSTableView, objectValueFor tableColumn: NSTableColumn?, row: Int) -> Any? {
-    return presets.at(row)?.localizedName
+    return presets[at: row]?.localizedName
   }
 
   func tableViewSelectionDidChange(_ notification: Notification) {
-    guard let preset = presets.at(tableView.selectedRow) else { return }
+    guard let preset = presets[at: tableView.selectedRow] else { return }
     showSettings(for: preset)
   }
 
@@ -351,9 +366,9 @@ class NewFilterSheetViewController: NSViewController, NSTableViewDelegate, NSTab
     switch param.type {
     case .text:
       // Text field
-      let label = ShortcutAvailableTextField(frame: NSRect(x: 4, y: yPos,
-                                            width: scrollContentView.frame.width - 8,
-                                            height: 22))
+      let label = NSTextField(frame: NSRect(x: 4, y: yPos,
+                              width: scrollContentView.frame.width - 8,
+                              height: 22))
       label.stringValue = param.defaultValue.stringValue
       label.isSelectable = false
       label.isEditable = true
@@ -417,8 +432,9 @@ class NewFilterSheetViewController: NSViewController, NSTableViewDelegate, NSTab
       }
     }
     // create filter
-    filterWindow.addFilter(preset.transformer(instance))
-    PlayerCore.active.sendOSD(.addFilter(preset.localizedName))
+    if filterWindow.addFilter(preset.transformer(instance)) {
+      PlayerCore.active.sendOSD(.addFilter(preset.localizedName))
+    }
   }
 
   @IBAction func sheetCancelBtnAction(_ sender: Any) {

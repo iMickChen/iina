@@ -10,14 +10,14 @@ import Cocoa
 
 // MARK: - Touch bar
 
-@available(OSX 10.12.2, *)
+@available(macOS 10.12.2, *)
 fileprivate extension NSTouchBar.CustomizationIdentifier {
 
   static let windowBar = NSTouchBar.CustomizationIdentifier("\(Bundle.main.bundleIdentifier!).windowTouchBar")
 
 }
 
-@available(OSX 10.12.2, *)
+@available(macOS 10.12.2, *)
 fileprivate extension NSTouchBarItem.Identifier {
 
   static let playPause = NSTouchBarItem.Identifier("\(Bundle.main.bundleIdentifier!).TouchBarItem.playPause")
@@ -35,22 +35,22 @@ fileprivate extension NSTouchBarItem.Identifier {
   static let next = NSTouchBarItem.Identifier("\(Bundle.main.bundleIdentifier!).TouchBarItem.next")
   static let prev = NSTouchBarItem.Identifier("\(Bundle.main.bundleIdentifier!).TouchBarItem.prev")
   static let exitFullScr = NSTouchBarItem.Identifier("\(Bundle.main.bundleIdentifier!).TouchBarItem.exitFullScr")
-
+  static let togglePIP = NSTouchBarItem.Identifier("\(Bundle.main.bundleIdentifier!).TouchBarItem.togglePIP")
 }
 
 // Image name, tag, custom label
 @available(macOS 10.12.2, *)
 fileprivate let touchBarItemBinding: [NSTouchBarItem.Identifier: (NSImage.Name, Int, String)] = [
-  .ahead15Sec: (.touchBarSkipAhead15SecondsTemplate, 15, NSLocalizedString("touchbar.ahead_15", comment: "15sec Ahead")),
-  .ahead30Sec: (.touchBarSkipAhead30SecondsTemplate, 30, NSLocalizedString("touchbar.ahead_30", comment: "30sec Ahead")),
-  .back15Sec: (.touchBarSkipBack15SecondsTemplate, -15, NSLocalizedString("touchbar.back_15", comment: "-15sec Ahead")),
-  .back30Sec: (.touchBarSkipBack30SecondsTemplate, -30, NSLocalizedString("touchbar.back_30", comment: "-30sec Ahead")),
-  .next: (.touchBarSkipAheadTemplate, 0, NSLocalizedString("touchbar.next_video", comment: "Next Video")),
-  .prev: (.touchBarSkipBackTemplate, 1, NSLocalizedString("touchbar.prev_video", comment: "Previous Video")),
-  .volumeUp: (.touchBarVolumeUpTemplate, 0, NSLocalizedString("touchbar.increase_volume", comment: "Volume +")),
-  .volumeDown: (.touchBarVolumeDownTemplate, 1, NSLocalizedString("touchbar.decrease_volume", comment: "Volume -")),
-  .rewind: (.touchBarRewindTemplate, 0, NSLocalizedString("touchbar.rewind", comment: "Rewind")),
-  .fastForward: (.touchBarFastForwardTemplate, 1, NSLocalizedString("touchbar.fast_forward", comment: "Fast Forward"))
+  .ahead15Sec: (NSImage.touchBarSkipAhead15SecondsTemplateName, 15, NSLocalizedString("touchbar.ahead_15", comment: "15sec Ahead")),
+  .ahead30Sec: (NSImage.touchBarSkipAhead30SecondsTemplateName, 30, NSLocalizedString("touchbar.ahead_30", comment: "30sec Ahead")),
+  .back15Sec: (NSImage.touchBarSkipBack15SecondsTemplateName, -15, NSLocalizedString("touchbar.back_15", comment: "-15sec Ahead")),
+  .back30Sec: (NSImage.touchBarSkipBack30SecondsTemplateName, -30, NSLocalizedString("touchbar.back_30", comment: "-30sec Ahead")),
+  .next: (NSImage.touchBarSkipAheadTemplateName, 0, NSLocalizedString("touchbar.next_video", comment: "Next Video")),
+  .prev: (NSImage.touchBarSkipBackTemplateName, 1, NSLocalizedString("touchbar.prev_video", comment: "Previous Video")),
+  .volumeUp: (NSImage.touchBarVolumeUpTemplateName, 0, NSLocalizedString("touchbar.increase_volume", comment: "Volume +")),
+  .volumeDown: (NSImage.touchBarVolumeDownTemplateName, 1, NSLocalizedString("touchbar.decrease_volume", comment: "Volume -")),
+  .rewind: (NSImage.touchBarRewindTemplateName, 0, NSLocalizedString("touchbar.rewind", comment: "Rewind")),
+  .fastForward: (NSImage.touchBarFastForwardTemplateName, 1, NSLocalizedString("touchbar.fast_forward", comment: "Fast Forward"))
 ]
 
 @available(macOS 10.12.2, *)
@@ -63,13 +63,12 @@ class TouchBarSupport: NSObject, NSTouchBarDelegate {
     touchBar.delegate = self
     touchBar.customizationIdentifier = .windowBar
     touchBar.defaultItemIdentifiers = [.playPause, .time, .slider, .remainingTime]
-    touchBar.customizationAllowedItemIdentifiers = [.playPause, .slider, .volumeUp, .volumeDown, .rewind, .fastForward, .time, .remainingTime, .ahead15Sec, .ahead30Sec, .back15Sec, .back30Sec, .next, .prev, .fixedSpaceLarge]
+    touchBar.customizationAllowedItemIdentifiers = [.playPause, .slider, .volumeUp, .volumeDown, .rewind, .fastForward, .time, .remainingTime, .ahead15Sec, .ahead30Sec, .back15Sec, .back30Sec, .next, .prev, .togglePIP, .fixedSpaceLarge]
     return touchBar
   }()
 
   weak var touchBarPlaySlider: TouchBarPlaySlider?
   weak var touchBarPlayPauseBtn: NSButton?
-  weak var touchBarExitFullScr: NSButton?
   var touchBarPosLabels: [DurationDisplayTextField] = []
   var touchBarPosLabelWidthLayout: NSLayoutConstraint?
   /** The current/remaining time label in Touch Bar. */
@@ -87,7 +86,7 @@ class TouchBarSupport: NSObject, NSTouchBarDelegate {
 
     case .playPause:
       let item = NSCustomTouchBarItem(identifier: identifier)
-      item.view = NSButton(image: NSImage(named: .touchBarPauseTemplate)!, target: self, action: #selector(self.touchBarPlayBtnAction(_:)))
+      item.view = NSButton(image: NSImage(named: NSImage.touchBarPauseTemplateName)!, target: self, action: #selector(self.touchBarPlayBtnAction(_:)))
       item.customizationLabel = NSLocalizedString("touchbar.play_pause", comment: "Play / Pause")
       self.touchBarPlayPauseBtn = item.view as? NSButton
       return item
@@ -118,16 +117,18 @@ class TouchBarSupport: NSObject, NSTouchBarDelegate {
       let item = NSCustomTouchBarItem(identifier: identifier)
       let label = DurationDisplayTextField(labelWithString: "00:00")
       label.alignment = .center
+      label.font = .monospacedDigitSystemFont(ofSize: 0, weight: .regular)
       label.mode = .current
       self.touchBarPosLabels.append(label)
       item.view = label
       item.customizationLabel = NSLocalizedString("touchbar.time", comment: "Time Position")
       return item
-    
+
     case .remainingTime:
       let item = NSCustomTouchBarItem(identifier: identifier)
       let label = DurationDisplayTextField(labelWithString: "00:00")
       label.alignment = .center
+      label.font = .monospacedDigitSystemFont(ofSize: 0, weight: .regular)
       label.mode = .remaining
       self.touchBarPosLabels.append(label)
       item.view = label
@@ -145,11 +146,17 @@ class TouchBarSupport: NSObject, NSTouchBarDelegate {
          .prev:
       guard let data = touchBarItemBinding[identifier] else { return nil }
       return buttonTouchBarItem(withIdentifier: identifier, imageName: data.0, tag: data.1, customLabel: data.2, action: #selector(self.touchBarSkipAction(_:)))
-      
+
     case .exitFullScr:
       let item = NSCustomTouchBarItem(identifier: identifier)
-      item.view = NSButton(image: NSImage(named: .touchBarExitFullScreenTemplate)!, target: self, action: #selector(self.touchBarExitFullScrAction(_:)))
-      self.touchBarExitFullScr = item.view as? NSButton
+      item.view = NSButton(image: NSImage(named: NSImage.touchBarExitFullScreenTemplateName)!, target: self, action: #selector(self.touchBarExitFullScrAction(_:)))
+      return item
+
+    case .togglePIP:
+      let item = NSCustomTouchBarItem(identifier: identifier)
+      // FIXME: we might need a better icon for this
+      item.view = NSButton(image: Bundle.main.image(forResource: "pip")!, target: self, action: #selector(self.touchBarTogglePIP(_:)))
+      item.customizationLabel = NSLocalizedString("touchbar.toggle_pip", comment: "Toggle PIP")
       return item
 
     default:
@@ -159,9 +166,9 @@ class TouchBarSupport: NSObject, NSTouchBarDelegate {
 
   func updateTouchBarPlayBtn() {
     if player.info.isPaused {
-      touchBarPlayPauseBtn?.image = NSImage(named: .touchBarPlayTemplate)
+      touchBarPlayPauseBtn?.image = NSImage(named: NSImage.touchBarPlayTemplateName)
     } else {
-      touchBarPlayPauseBtn?.image = NSImage(named: .touchBarPauseTemplate)
+      touchBarPlayPauseBtn?.image = NSImage(named: NSImage.touchBarPauseTemplateName)
     }
   }
 
@@ -191,9 +198,13 @@ class TouchBarSupport: NSObject, NSTouchBarDelegate {
     let percentage = 100 * sender.doubleValue / sender.maxValue
     player.seek(percent: percentage, forceExact: true)
   }
-  
+
   @objc func touchBarExitFullScrAction(_ sender: NSButton) {
     player.mainWindow.toggleWindowFullScreen()
+  }
+
+  @objc func touchBarTogglePIP(_ sender: NSButton) {
+    player.mainWindow.menuTogglePIP(.dummy)
   }
 
   private func buttonTouchBarItem(withIdentifier identifier: NSTouchBarItem.Identifier, imageName: NSImage.Name, tag: Int, customLabel: String, action: Selector) -> NSCustomTouchBarItem {
@@ -222,7 +233,7 @@ class TouchBarSupport: NSObject, NSTouchBarDelegate {
       }
     }
   }
-  
+
   func toggleTouchBarEsc(enteringFullScr: Bool) {
     if enteringFullScr, PlayerCore.keyBindings["ESC"]?.readableAction == "set fullscreen no" {
       touchBar.escapeKeyReplacementItemIdentifier = .exitFullScr
