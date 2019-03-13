@@ -79,10 +79,13 @@ struct Preference {
     static let pauseWhenInactive = Key("pauseWhenInactive")
     static let playWhenEnteringFullScreen = Key("playWhenEnteringFullScreen")
     static let pauseWhenLeavingFullScreen = Key("pauseWhenLeavingFullScreen")
+    static let pauseWhenGoesToSleep = Key("pauseWhenGoesToSleep")
 
     /** Show chapter pos in progress bar (bool) */
     static let showChapterPos = Key("showChapterPos")
 
+    static let screenshotSaveToFile = Key("screenshotSaveToFile")
+    static let screenshotCopyToClipboard = Key("screenshotCopyToClipboard")
     static let screenshotFolder = Key("screenShotFolder")
     static let screenshotIncludeSubtitle = Key("screenShotIncludeSubtitle")
     static let screenshotFormat = Key("screenShotFormat")
@@ -107,10 +110,8 @@ struct Preference {
 
     static let controlBarToolbarButtons = Key("controlBarToolbarButtons")
 
-    /** OSD auto hide timeout (float) */
+    static let enableOSD = Key("enableOSD")
     static let osdAutoHideTimeout = Key("osdAutoHideTimeout")
-
-    /** OSD text size (float) */
     static let osdTextSize = Key("osdTextSize")
 
     static let usePhysicalResolution = Key("usePhysicalResolution")
@@ -122,13 +123,21 @@ struct Preference {
     static let oscPosition = Key("oscPosition")
 
     static let playlistWidth = Key("playlistWidth")
+    static let prefetchPlaylistVideoDuration = Key("prefetchPlaylistVideoDuration")
 
     static let enableThumbnailPreview = Key("enableThumbnailPreview")
     static let maxThumbnailPreviewCacheSize = Key("maxThumbnailPreviewCacheSize")
+    static let enableThumbnailForRemoteFiles = Key("enableThumbnailForRemoteFiles")
 
     static let autoSwitchToMusicMode = Key("autoSwitchToMusicMode")
+    static let musicModeShowPlaylist = Key("musicModeShowPlaylist")
+    static let musicModeShowAlbumArt = Key("musicModeShowAlbumArt")
 
     static let displayTimeAndBatteryInFullScreen = Key("displayTimeAndBatteryInFullScreen")
+    
+    static let windowBehaviorWhenPip = Key("windowBehaviorWhenPip")
+    static let pauseWhenPip = Key("pauseWhenPip")
+    static let togglePipByMinimizingWindow = Key("togglePipByMinimizingWindow")
 
     // Codec
 
@@ -142,6 +151,9 @@ struct Preference {
     static let spdifAC3 = Key("spdifAC3")
     static let spdifDTS = Key("spdifDTS")
     static let spdifDTSHD = Key("spdifDTSHD")
+
+    static let audioDevice = Key("audioDevice")
+    static let audioDeviceDesc = Key("audioDeviceDesc")
 
     static let enableInitialVolume = Key("enableInitialVolume")
     static let initialVolume = Key("initialVolume")
@@ -177,6 +189,8 @@ struct Preference {
     static let openSubUsername = Key("openSubUsername")
     static let assrtToken = Key("assrtToken")
     static let defaultEncoding = Key("defaultEncoding")
+    static let autoSearchOnlineSub = Key("autoSearchOnlineSub")
+    static let autoSearchThreshold = Key("autoSearchThreshold")
 
     // Network
 
@@ -238,6 +252,7 @@ struct Preference {
 
     /** Log to log folder (bool) */
     static let enableLogging = Key("enableLogging")
+    static let logLevel = Key("logLevel")
 
     /** unused */
     // static let resizeFrameBuffer = Key("resizeFrameBuffer")
@@ -253,6 +268,9 @@ struct Preference {
 
     static let savedVideoFilters = Key("savedVideoFilters")
     static let savedAudioFilters = Key("savedAudioFilters")
+
+    static let iinaLastPlayedFilePath = Key("iinaLastPlayedFilePath")
+    static let iinaLastPlayedFilePosition = Key("iinaLastPlayedFilePosition")
   }
 
   // MARK: - Enums
@@ -283,13 +301,24 @@ struct Preference {
 
   enum Theme: Int, InitializingFromKey {
     case dark = 0
-    case ultraDark
-    case light
-    case mediumLight
+    case ultraDark // 1
+    case light // 2
+    case mediumLight // 3
+    case system // 4
 
     static var defaultValue = Theme.dark
 
     init?(key: Key) {
+      let value = Preference.integer(for: key)
+      if #available(macOS 10.14, *) {
+        if value == 1 || value == 3 {
+          return nil
+        }
+      } else {
+        if value == 4 {
+          return nil
+        }
+      }
       self.init(rawValue: Preference.integer(for: key))
     }
   }
@@ -567,6 +596,18 @@ struct Preference {
       }
     }
   }
+  
+  enum WindowBehaviorWhenPip: Int, InitializingFromKey {
+    case doNothing = 0
+    case hide
+    case minimize
+    
+    static var defaultValue = WindowBehaviorWhenPip.doNothing
+    
+    init?(key: Key) {
+      self.init(rawValue: Preference.integer(for: key))
+    }
+  }
 
   enum ToolBarButton: Int {
     case settings = 0
@@ -578,7 +619,7 @@ struct Preference {
 
     func image() -> NSImage {
       switch self {
-      case .settings: return NSImage(named: .actionTemplate)!
+      case .settings: return NSImage(named: NSImage.actionTemplateName)!
       case .playlist: return #imageLiteral(resourceName: "playlist")
       case .pip: return #imageLiteral(resourceName: "pip")
       case .fullScreen: return #imageLiteral(resourceName: "fullscreen")
@@ -618,7 +659,9 @@ struct Preference {
     .controlBarToolbarButtons: [ToolBarButton.pip.rawValue, ToolBarButton.playlist.rawValue, ToolBarButton.settings.rawValue],
     .oscPosition: OSCPosition.floating.rawValue,
     .playlistWidth: 270,
+    .prefetchPlaylistVideoDuration: true,
     .themeMaterial: Theme.dark.rawValue,
+    .enableOSD: true,
     .osdAutoHideTimeout: Float(1),
     .osdTextSize: Float(20),
     .softVolume: 100,
@@ -636,6 +679,7 @@ struct Preference {
     .pauseWhenMinimized: false,
     .pauseWhenInactive: false,
     .pauseWhenLeavingFullScreen: false,
+    .pauseWhenGoesToSleep: true,
     .playWhenEnteringFullScreen: false,
 
     .playlistAutoAdd: true,
@@ -648,8 +692,15 @@ struct Preference {
     .showRemainingTime: false,
     .enableThumbnailPreview: true,
     .maxThumbnailPreviewCacheSize: 500,
+    .enableThumbnailForRemoteFiles: false,
     .autoSwitchToMusicMode: true,
+    .musicModeShowPlaylist: false,
+    .musicModeShowAlbumArt: true,
     .displayTimeAndBatteryInFullScreen: false,
+    
+    .windowBehaviorWhenPip: WindowBehaviorWhenPip.doNothing.rawValue,
+    .pauseWhenPip: false,
+    .togglePipByMinimizingWindow: false,
 
     .videoThreads: 0,
     .hardwareDecoder: HardwareDecoderOption.auto.rawValue,
@@ -659,6 +710,8 @@ struct Preference {
     .spdifAC3: false,
     .spdifDTS: false,
     .spdifDTSHD: false,
+    .audioDevice: "auto",
+    .audioDeviceDesc: "Autoselect device",
     .enableInitialVolume: false,
     .initialVolume: 100,
 
@@ -691,6 +744,8 @@ struct Preference {
     .openSubUsername: "",
     .assrtToken: "",
     .defaultEncoding: "auto",
+    .autoSearchOnlineSub: false,
+    .autoSearchThreshold: 20,
 
     .enableCache: true,
     .defaultCacheSize: 153600,
@@ -709,6 +764,7 @@ struct Preference {
     .enableAdvancedSettings: false,
     .useMpvOsd: false,
     .enableLogging: false,
+    .logLevel: Logger.Level.debug.rawValue,
     .userOptions: [],
     .useUserDefinedConfDir: false,
     .userDefinedConfDir: "~/.config/mpv/",
@@ -728,6 +784,8 @@ struct Preference {
     .pinchAction: PinchAction.windowSize.rawValue,
     .forceTouchAction: MouseClickAction.none.rawValue,
 
+    .screenshotSaveToFile: true,
+    .screenshotCopyToClipboard: false,
     .screenshotFolder: "~/Pictures/Screenshots",
     .screenshotIncludeSubtitle: true,
     .screenshotFormat: ScreenshotFormat.png.rawValue,
@@ -813,12 +871,16 @@ struct Preference {
     ud.set(value, forKey: key.rawValue)
   }
 
-  static func set(_ value: Any, for key: Key) {
+  static func set(_ value: URL, for key: Key) {
+    ud.set(value, forKey: key.rawValue)
+  }
+
+  static func set(_ value: Any?, for key: Key) {
     ud.set(value, forKey: key.rawValue)
   }
 
   static func `enum`<T: InitializingFromKey>(for key: Key) -> T {
     return T.init(key: key) ?? T.defaultValue
   }
-  
+
 }

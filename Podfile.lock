@@ -1,33 +1,26 @@
 PODS:
   - GRMustache.swift (2.0.0)
   - GzipSwift (4.0.4)
-  - Just (0.6.0)
-  - MASPreferences (1.3)
-  - PromiseKit (4.4.0):
-    - PromiseKit/Foundation (= 4.4.0)
-    - PromiseKit/QuartzCore (= 4.4.0)
-    - PromiseKit/UIKit (= 4.4.0)
-  - PromiseKit/CorePromise (4.4.0)
-  - PromiseKit/Foundation (4.4.0):
+  - Just (0.7.1)
+  - PromiseKit (6.8.3):
+    - PromiseKit/CorePromise (= 6.8.3)
+    - PromiseKit/Foundation (= 6.8.3)
+    - PromiseKit/UIKit (= 6.8.3)
+  - PromiseKit/CorePromise (6.8.3)
+  - PromiseKit/Foundation (6.8.3):
     - PromiseKit/CorePromise
-  - PromiseKit/QuartzCore (4.4.0):
-    - PromiseKit/CorePromise
-  - PromiseKit/UIKit (4.4.0):
-    - PromiseKit/CorePromise
-  - Sparkle (1.18.1)
+  - Sparkle (1.21.2)
 
 DEPENDENCIES:
   - GRMustache.swift (from `https://github.com/iina/GRMustache.swift.git`)
   - GzipSwift
-  - Just (from `https://github.com/JustHTTP/Just.git`, branch `swift-4`)
-  - MASPreferences
+  - Just (from `https://github.com/JustHTTP/Just.git`)
   - PromiseKit
   - Sparkle
 
 SPEC REPOS:
-  https://github.com/CocoaPods/Specs.git:
+  https://github.com/cocoapods/specs.git:
     - GzipSwift
-    - MASPreferences
     - PromiseKit
     - Sparkle
 
@@ -35,25 +28,23 @@ EXTERNAL SOURCES:
   GRMustache.swift:
     :git: https://github.com/iina/GRMustache.swift.git
   Just:
-    :branch: swift-4
     :git: https://github.com/JustHTTP/Just.git
 
 CHECKOUT OPTIONS:
   GRMustache.swift:
-    :commit: c2e858e5bd7f2e4faf13ae4cc34e9966382e2ff8
+    :commit: 3e6778e4b8a134e3f96d04d6c15c7213bd7d9935
     :git: https://github.com/iina/GRMustache.swift.git
   Just:
-    :commit: 93fc04992243fb459af37963797ef5ac5224b242
+    :commit: b314be4ac8652b66182cfbd4a9893dfcb3808bbf
     :git: https://github.com/JustHTTP/Just.git
 
 SPEC CHECKSUMS:
   GRMustache.swift: 53405b02c374520f9193cf41bfa677f03a6d70aa
   GzipSwift: 1a5bc5f7827e09846b0635b5079f1224bc3b1c3a
-  Just: 72e8a6e01ec5adba1aa0f7996ff4459aa6a3d710
-  MASPreferences: c08b8622dd17b47da87669e741efd7c92e970e8c
-  PromiseKit: ecf5fe92275d57ee77c9ede858af47a162e9b97e
-  Sparkle: 06ea33170007c5937ee54da481b4481af98fac79
+  Just: 60c0995e04718eb621a07abef45ce6883c562f2b
+  PromiseKit: 94c6e781838c5bf4717677d0d882b0e7250c80fc
+  Sparkle: 1678d4707e7665960c7d1b43aca125e6392d11c4
 
-PODFILE CHECKSUM: 298263a8b9b462089f9ac5649337f73e4919ee0a
+PODFILE CHECKSUM: c149e2f5a370325310fa22313fe8c514d0967750
 
-COCOAPODS: 1.5.0
+COCOAPODS: 1.6.0

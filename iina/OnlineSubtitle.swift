@@ -9,6 +9,8 @@
 import Foundation
 import PromiseKit
 
+fileprivate let subsystem = Logger.Subsystem(rawValue: "onlinesub")
+
 class OnlineSubtitle: NSObject {
 
   typealias SubCallback = ([OnlineSubtitle]) -> Void
@@ -54,6 +56,8 @@ class OnlineSubtitle: NSObject {
       source = userSource!
     }
 
+    Logger.log("Search subtitle from \(source.name)...", subsystem: subsystem)
+
     playerCore.sendOSD(.startFindingSub(source.name), autoHide: false)
 
     switch source {
@@ -63,8 +67,10 @@ class OnlineSubtitle: NSObject {
       subSupport.hash(url)
       .then { info in
         subSupport.request(info)
-      }.then { subs in
+      }.done { subs in
         callback(subs)
+      }.ensure {
+        playerCore.hideOSD()
       }.catch { error in
         let osdMessage: OSDMessage
         switch error {
@@ -78,8 +84,6 @@ class OnlineSubtitle: NSObject {
           playerCore.sendOSD(osdMessage)
           playerCore.isSearchingOnlineSubtitle = false
         }
-      }.always {
-        playerCore.hideOSD()
       }
     case .openSub:
       // opensubtitles
@@ -106,7 +110,7 @@ class OnlineSubtitle: NSObject {
         }
       }.then { subs in
         subSupport.showSubSelectWindow(with: subs)
-      }.then { selectedSubs -> Void in
+      }.done { selectedSubs in
         callback(selectedSubs)
       }.catch { err in
         let osdMessage: OSDMessage
@@ -114,13 +118,11 @@ class OnlineSubtitle: NSObject {
         case OpenSubSupport.OpenSubError.cannotReadFile,
              OpenSubSupport.OpenSubError.fileTooSmall:
           osdMessage = .fileError
-        case OpenSubSupport.OpenSubError.loginFailed(let reason):
-          Utility.log("OpenSubtitles: \(reason)")
+        case OpenSubSupport.OpenSubError.loginFailed:
           osdMessage = .cannotLogin
         case OpenSubSupport.OpenSubError.userCanceled:
           osdMessage = .canceled
-        case OpenSubSupport.OpenSubError.xmlRpcError(let error):
-          Utility.log("OpenSubtitles: \(error.readableDescription)")
+        case OpenSubSupport.OpenSubError.xmlRpcError:
           osdMessage = .networkError
         case OpenSubSupport.OpenSubError.noResult:
           callback([])
@@ -133,30 +135,30 @@ class OnlineSubtitle: NSObject {
       }
     case .assrt:
       let subSupport = AssrtSupport.shared
-      firstly {
+      firstly { () -> Promise<[AssrtSubtitle]> in
         if !subSupport.checkToken() {
           throw AssrtSupport.AssrtError.userCanceled
         }
         return subSupport.search(url.deletingPathExtension().lastPathComponent)
       }.then { subs in
         subSupport.showSubSelectWindow(with: subs)
-      }.then { selectedSubs in
-        when(fulfilled: selectedSubs.map({ subSupport.loadDetails(forSub: $0) }))
-      }.then { loadedSubs in
-        callback(loadedSubs)
+      }.then { selectedSubs -> Promise<[AssrtSubtitle]> in
+        return when(fulfilled: selectedSubs.map({ subSupport.loadDetails(forSub: $0) }))
+      }.done { loadedSubs in
+        callback(loadedSubs as [OnlineSubtitle])
+      }.ensure {
+        playerCore.hideOSD()
       }.catch { err in
         let osdMessage: OSDMessage
         switch err {
         case AssrtSupport.AssrtError.userCanceled:
           osdMessage = .canceled
         default:
-          Utility.log("Assrt: \(err.localizedDescription)")
+          Logger.log(err.localizedDescription, level: .error)
           osdMessage = .networkError
         }
         playerCore.sendOSD(osdMessage)
         playerCore.isSearchingOnlineSubtitle = false
-      }.always {
-        playerCore.hideOSD()
       }
     }
   }

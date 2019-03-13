@@ -21,7 +21,7 @@
 "cmd.playlist-move" = "Déplacer l'élément dans la playlist";
 "cmd.playlist-next" = "Fichier média suivant";
 "cmd.playlist-prev" = "Fichier média précédent";
-"cmd.playlist-remove" = "Enlever le fichier sélectionné de la playlist";
+"cmd.playlist-remove" = "Enlever le fichier en cours de la playlist";
 "cmd.playlist-shuffle" = "Ordre aléatoire";
 "cmd.quit" = "Quitter";
 "cmd.quit-watch-later" = "Quitter (sauvegarder l'état)";
@@ -38,13 +38,14 @@
 "iina.audio-panel" = "Panel audio";
 "iina.bigger-window" = "Fenêtre plus grande";
 "iina.chapter-panel" = "Panel des chapitres";
-"iina.delete-current-file" = "Enlever le fichier sélectionné de la playlist";
+"iina.delete-current-file" = "Supprimer le fichier en cours";
+"iina.delete-current-file-hard" = "Supprimer le fichier en cours sans passer par la corbeille";
 "iina.find-online-subs" = "Trouver des sous-titres en ligne";
 "iina.fit-to-screen" = "Ajuster à l'écran";
 "iina.flip" = "Pivoter";
 "iina.mirror" = "Miroir";
 "iina.open-file" = "Ouvrir un fichier";
-"iina.open-url" = "Ouvrir une URL";
+"iina.open-url" = "Ouvrir une adresse";
 "iina.playlist-panel" = "Panel des playlists";
 "iina.save-downloaded-sub" = "Sauvegarder les sous-titres téléchargés";
 "iina.save-playlist" = "Sauvegarder la playlist";

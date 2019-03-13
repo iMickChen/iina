@@ -17,7 +17,7 @@ class MainMenuActionHandler: NSResponder {
     self.player = playerCore
     super.init()
   }
-  
+
   required init?(coder: NSCoder) {
     fatalError("init(coder:) has not been implemented")
   }
@@ -27,7 +27,7 @@ class MainMenuActionHandler: NSResponder {
     inspector.showWindow(self)
     inspector.updateInfo()
   }
-  
+
   @objc func menuSavePlaylist(_ sender: NSMenuItem) {
     Utility.quickSavePanel(title: "Save to playlist", types: ["m3u8"]) { (url) in
       if url.isFileURL {
@@ -35,7 +35,7 @@ class MainMenuActionHandler: NSResponder {
         for item in self.player.info.playlist {
           playlist.append((item.filename + "\n"))
         }
-        
+
         do {
           try playlist.write(to: url, atomically: true, encoding: String.Encoding.utf8)
         } catch let error as NSError {
@@ -52,6 +52,18 @@ class MainMenuActionHandler: NSResponder {
       let index = player.mpv.getInt(MPVProperty.playlistPos)
       player.playlistRemove(index)
       try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+    } catch let error {
+      Utility.showAlert("playlist.error_deleting", arguments: [error.localizedDescription])
+    }
+  }
+
+  // currently only being used for key command
+  @objc func menuDeleteCurrentFileHard(_ sender: NSMenuItem) {
+    guard let url = player.info.currentURL else { return }
+    do {
+      let index = player.mpv.getInt(MPVProperty.playlistPos)
+      player.playlistRemove(index)
+      try FileManager.default.removeItem(at: url)
     } catch let error {
       Utility.showAlert("playlist.error_deleting", arguments: [error.localizedDescription])
     }
@@ -106,7 +118,7 @@ extension MainMenuActionHandler {
   }
 
   @objc func menuJumpTo(_ sender: NSMenuItem) {
-    let _ = Utility.quickPromptPanel("jump_to") { input in
+    Utility.quickPromptPanel("jump_to") { input in
       if let vt = VideoTime(input) {
         self.player.seek(absoluteSecond: Double(vt.second))
       }
@@ -158,11 +170,11 @@ extension MainMenuActionHandler {
   }
 
   @objc func menuNextChapter(_ sender: NSMenuItem) {
-    player.mpv.command(.add, args: ["chapter", "1"])
+    player.mpv.command(.add, args: ["chapter", "1"], checkError: false)
   }
 
   @objc func menuPreviousChapter(_ sender: NSMenuItem) {
-    player.mpv.command(.add, args: ["chapter", "-1"])
+    player.mpv.command(.add, args: ["chapter", "-1"], checkError: false)
   }
 }
 
@@ -174,7 +186,7 @@ extension MainMenuActionHandler {
       player.setVideoAspect(aspectStr)
       player.sendOSD(.aspect(aspectStr))
     } else {
-      Utility.log("Unknown aspect in menuChangeAspect(): \(sender.representedObject.debugDescription)")
+      Logger.log("Unknown aspect in menuChangeAspect(): \(sender.representedObject.debugDescription)", level: .error)
     }
   }
 
@@ -182,7 +194,7 @@ extension MainMenuActionHandler {
     if let cropStr = sender.representedObject as? String {
       player.setCrop(fromString: cropStr)
     } else {
-      Utility.log("sender.representedObject is not a string in menuChangeCrop()")
+      Logger.log("sender.representedObject is not a string in menuChangeCrop()", level: .error)
     }
   }
 
@@ -221,12 +233,12 @@ extension MainMenuActionHandler {
       let newVolume = Double(volumeDelta) + player.info.volume
       player.setVolume(newVolume)
     } else {
-      Utility.log("sender.representedObject is not int in menuChangeVolume()")
+      Logger.log("sender.representedObject is not int in menuChangeVolume()", level: .error)
     }
   }
 
   @objc func menuToggleMute(_ sender: NSMenuItem) {
-    player.toogleMute()
+    player.toggleMute()
   }
 
   @objc func menuChangeAudioDelay(_ sender: NSMenuItem) {
@@ -234,7 +246,7 @@ extension MainMenuActionHandler {
       let newDelay = player.info.audioDelay + delayDelta
       player.setAudioDelay(newDelay)
     } else {
-      Utility.log("sender.representedObject is not Double in menuChangeAudioDelay()")
+      Logger.log("sender.representedObject is not Double in menuChangeAudioDelay()", level: .error)
     }
   }
 
@@ -247,7 +259,7 @@ extension MainMenuActionHandler {
 
 extension MainMenuActionHandler {
   @objc func menuLoadExternalSub(_ sender: NSMenuItem) {
-    Utility.quickOpenPanel(title: "Load external subtitle file", isDir: false) { url in
+    Utility.quickOpenPanel(title: "Load external subtitle file", chooseDir: false) { url in
       self.player.loadExternalSubFile(url, delay: true)
     }
   }
@@ -257,7 +269,7 @@ extension MainMenuActionHandler {
       let newDelay = player.info.subDelay + delayDelta
       player.setSubDelay(newDelay)
     } else {
-      Utility.log("sender.representedObject is not Double in menuChangeSubDelay()")
+      Logger.log("sender.representedObject is not Double in menuChangeSubDelay()", level: .error)
     }
   }
 
@@ -295,20 +307,24 @@ extension MainMenuActionHandler {
   }
 
   @objc func menuFindOnlineSub(_ sender: NSMenuItem) {
-    // return if last search is undone
+    // return if last search is not finished
     guard let url = player.info.currentURL, !player.isSearchingOnlineSubtitle else { return }
 
     player.isSearchingOnlineSubtitle = true
     OnlineSubtitle.getSubtitle(forFile: url, playerCore: player) { subtitles in
       // send osd in main thread
       self.player.sendOSD(.foundSub(subtitles.count))
+      guard !subtitles.isEmpty else {
+        self.player.isSearchingOnlineSubtitle = false
+        return
+      }
       // download them
       for sub in subtitles {
         sub.download { result in
           switch result {
           case .ok(let urls):
             for url in urls {
-              Utility.log("Saved subtitle to \(url.path)")
+              Logger.log("Saved subtitle to \(url.path)")
               self.player.loadExternalSubFile(url)
             }
             self.player.sendOSD(.downloadedSub(
@@ -318,9 +334,9 @@ extension MainMenuActionHandler {
           case .failed:
             self.player.sendOSD(.networkError)
           }
-          self.player.isSearchingOnlineSubtitle = false
         }
       }
+      self.player.isSearchingOnlineSubtitle = false
     }
   }
 

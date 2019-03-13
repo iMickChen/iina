@@ -20,7 +20,7 @@ class ControlBarView: NSVisualEffectView {
   private var isAlignFeedbackSent = false
 
   override func awakeFromNib() {
-    self.layer?.cornerRadius = 6
+    self.roundCorners(withRadius: 6)
     self.translatesAutoresizingMaskIntoConstraints = false
   }
 
@@ -44,7 +44,7 @@ class ControlBarView: NSVisualEffectView {
       let xPosWhenCenter = (windowFrame.width - frame.width) / 2
       if abs(newOrigin.x - xPosWhenCenter) <= 5 {
         newOrigin.x = xPosWhenCenter
-        if #available(macOS 10.11, *), !isAlignFeedbackSent {
+        if !isAlignFeedbackSent {
           NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
           isAlignFeedbackSent = true
         }
@@ -52,40 +52,21 @@ class ControlBarView: NSVisualEffectView {
         isAlignFeedbackSent = false
       }
     }
-    // bound to parent
-    var updateX = true, updateY = true
+    // bound to window frame
     let xMax = windowFrame.width - frame.width - 10
-    let yMax = windowFrame.height - frame.height
-    if newOrigin.x > xMax {
-      newOrigin.x = xMax
-      updateX = false
-    }
-    if newOrigin.y > yMax {
-      newOrigin.y = yMax
-      updateY = false
-    }
-    if newOrigin.x < 10 {
-      newOrigin.x = 0
-      updateX = false
-    }
-    if newOrigin.y < 0 {
-      newOrigin.y = 0
-      updateY = false
-    }
-    // save position
-    if updateX {
-      let xPos = newOrigin.x + frame.width / 2
-      xConstraint.constant = xPos
-      Preference.set(xPos / windowFrame.width, for: .controlBarPositionHorizontal)
-    }
-    if updateY {
-      let yPos = newOrigin.y
-      yConstraint.constant = yPos
-      Preference.set(yPos / windowFrame.height, for: .controlBarPositionVertical)
-    }
+    let yMax = windowFrame.height - frame.height - 25
+    newOrigin = newOrigin.constrained(to: NSRect(x: 10, y: 0, width: xMax, height: yMax))
+    // apply position
+    xConstraint.constant = newOrigin.x + frame.width / 2
+    yConstraint.constant = newOrigin.y
   }
+
   override func mouseUp(with event: NSEvent) {
     isDragging = false
+    guard let windowFrame = window?.frame else { return }
+    // save final position
+    Preference.set(xConstraint.constant / windowFrame.width, for: .controlBarPositionHorizontal)
+    Preference.set(yConstraint.constant / windowFrame.height, for: .controlBarPositionVertical)
   }
 
 }

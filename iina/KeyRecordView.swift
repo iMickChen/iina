@@ -8,6 +8,23 @@
 
 import Cocoa
 
+fileprivate extension NSColor {
+  static let keyRecordViewBackground: NSColor = {
+    if #available(macOS 10.14, *) {
+      return NSColor.controlBackgroundColor.withSystemEffect(.disabled)
+    } else {
+      return NSColor(calibratedWhite: 0.8, alpha: 1)
+    }
+  }()
+  static let keyRecordViewBackgroundActive: NSColor = {
+    if #available(macOS 10.14, *) {
+      return .controlBackgroundColor
+    } else {
+      return .lightGray
+    }
+  }()
+}
+
 protocol KeyRecordViewDelegate {
   func keyRecordView(_ view: KeyRecordView, recordedKeyDownWith event: NSEvent)
 }
@@ -23,10 +40,14 @@ class KeyRecordView: NSView {
 
   override func awakeFromNib() {
     wantsLayer = true
-    layer?.backgroundColor = NSColor.lightGray.cgColor
+    layer?.backgroundColor = NSColor.keyRecordViewBackgroundActive.cgColor
     layer?.cornerRadius = 4
   }
 
+  override func updateLayer() {
+    layer?.backgroundColor = NSColor.keyRecordViewBackgroundActive.cgColor
+  }
+  
   override var acceptsFirstResponder: Bool {
     return true
   }
@@ -43,12 +64,12 @@ class KeyRecordView: NSView {
   }
 
   override func resignFirstResponder() -> Bool {
-    layer?.backgroundColor = NSColor(calibratedWhite: 0.8, alpha: 1).cgColor
+    layer?.backgroundColor = NSColor.keyRecordViewBackground.cgColor
     return true
   }
 
   override func becomeFirstResponder() -> Bool {
-    layer?.backgroundColor = NSColor.lightGray.cgColor
+    layer?.backgroundColor = NSColor.keyRecordViewBackgroundActive.cgColor
     return true
   }
 

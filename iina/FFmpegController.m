@@ -27,6 +27,11 @@ NSLog(@"Error when getting thumbnails: %@ (%d)", msg, ret);\
 return -1;\
 }
 
+#define CHECK(ret,msg) if (!(ret)) {\
+NSLog(@"Error when getting thumbnails: %@", msg);\
+return -1;\
+}
+
 @implementation FFThumbnail
 
 @end
@@ -88,7 +93,7 @@ return -1;\
 {
   int i, ret;
 
-  char *cFilename = strdup(file.UTF8String);
+  char *cFilename = strdup(file.fileSystemRepresentation);
   [_thumbnails removeAllObjects];
   [_thumbnailPartialResult removeAllObjects];
   [_addedTimestamps removeAllObjects];
@@ -119,7 +124,10 @@ return -1;\
 
   // Get the codec context for the video stream
   AVStream *pVideoStream = pFormatCtx->streams[videoStream];
-  if (av_q2d(pVideoStream->avg_frame_rate) == 0) {
+  AVRational videoAvgFrameRate = pVideoStream->avg_frame_rate;
+
+  // Check whether the denominator (AVRational.den) is zero to prevent division-by-zero
+  if (videoAvgFrameRate.den == 0 || av_q2d(videoAvgFrameRate) == 0) {
     NSLog(@"Avg frame rate = 0, ignore");
     return -1;
   }
@@ -133,8 +141,15 @@ return -1;\
   AVDictionary *optionsDict = NULL;
 
   avcodec_parameters_to_context(pCodecCtx, pVideoStream->codecpar);
-  av_codec_set_pkt_timebase(pCodecCtx, pVideoStream->time_base);
+  pCodecCtx->time_base = pVideoStream->time_base;
 
+  if (pCodecCtx->pix_fmt < 0 || pCodecCtx->pix_fmt >= AV_PIX_FMT_NB) {
+    avcodec_free_context(&pCodecCtx);
+    avformat_close_input(&pFormatCtx);
+    NSLog(@"Error when getting thumbnails: Pixel format is null");
+    return -1;
+  }
+  
   ret = avcodec_open2(pCodecCtx, pCodec, &optionsDict);
   CHECK_SUCCESS(ret, @"Cannot open codec")
 
@@ -168,6 +183,7 @@ return -1;\
   CHECK_SUCCESS(ret, @"Cannot fill data for RGBA frame")
 
   // Create a sws context for converting color space and resizing
+  CHECK(pCodecCtx->pix_fmt != AV_PIX_FMT_NONE, @"Pixel format is none")
   struct SwsContext *sws_ctx = sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt,
                                               pFrameRGB->width, pFrameRGB->height, pFrameRGB->format,
                                               SWS_BILINEAR,
@@ -305,6 +321,31 @@ return -1;\
       _timestamp = currentTime;
     }
   }
+}
+
++ (double)probeVideoDurationForFile:(nonnull NSString *)file
+{
+  int ret;
+  int64_t duration;
+
+  char *cFilename = strdup(file.fileSystemRepresentation);
+
+  AVFormatContext *pFormatCtx = NULL;
+  ret = avformat_open_input(&pFormatCtx, cFilename, NULL, NULL);
+  free(cFilename);
+  if (ret < 0) return -1;
+
+  duration = pFormatCtx->duration;
+  if (duration <= 0) {
+    ret = avformat_find_stream_info(pFormatCtx, NULL);
+    if (ret < 0) return -1;
+    duration = pFormatCtx->duration;
+  }
+
+  avformat_close_input(&pFormatCtx);
+  avformat_free_context(pFormatCtx);
+
+  return (double)duration / AV_TIME_BASE;
 }
 
 @end

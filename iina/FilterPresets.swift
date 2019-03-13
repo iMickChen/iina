@@ -10,7 +10,7 @@ import Foundation
 
 fileprivate typealias PM = FilterParameter
 
-/** 
+/**
  A fliter preset or tamplate, which contains the filter name and definitions of all parameters.
  */
 class FilterPreset {
@@ -124,7 +124,7 @@ struct FilterParameterValue {
   private var _floatValue: Float?
 
   var stringValue: String {
-    return _stringValue ?? _intValue?.toStr() ?? _floatValue?.toStr() ?? ""
+    return _stringValue ?? _intValue?.description ?? _floatValue?.description ?? ""
   }
 
   var intValue: Int {

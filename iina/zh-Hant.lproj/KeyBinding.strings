@@ -38,7 +38,8 @@
 "iina.audio-panel" = "音頻設置面板";
 "iina.bigger-window" = "大一些";
 "iina.chapter-panel" = "章節面板";
-"iina.delete-current-file" = "刪除當前文件";
+"iina.delete-current-file" = "刪除當前檔案";
+"iina.delete-current-file-hard" = "直接刪除當前檔案（不經過垃圾桶）";
 "iina.find-online-subs" = "查找在線字幕";
 "iina.fit-to-screen" = "適應螢幕";
 "iina.flip" = "翻轉";
@@ -54,7 +55,7 @@
 "iina.toggle-mirror" = "切換 鏡像";
 "iina.toggle-music-mode" = "切換音樂模式";
 "iina.toggle-pip" = "切換「畫中畫」模式";
-"iina.video-panel" = "視頻設置面板";
+"iina.video-panel" = "視訊設置面板";
 "in" = "值";
 "minus" = "減少";
 "no" = "否";
@@ -77,7 +78,7 @@
 "opt.sub-pos" = "字幕位置";
 "opt.sub-scale" = "字幕縮放";
 "opt.sub-visibility" = "字幕可見";
-"opt.video" = "視頻軌道";
+"opt.video" = "視訊軌道";
 "opt.video-aspect" = "長寬比";
 "opt.volume" = "音量";
 "opt.window-scale" = "視窗縮放";

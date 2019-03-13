@@ -51,6 +51,16 @@ class MPVNode {
       }
       return dic
 
+    case MPV_FORMAT_BYTE_ARRAY:
+      let array = node.u.ba!.pointee
+      let data = array.data!
+      let size = array.size
+      var byteArray: [UInt8] = []
+      for i in 0 ..< size {
+        byteArray.append(data.load(fromByteOffset: i, as: UInt8.self))
+      }
+      return byteArray
+
     case MPV_FORMAT_NONE:
       return nil
 
@@ -117,7 +127,7 @@ class MPVNode {
       let objDic = obj as! [String: Any?]
       // create key and value ptr
       let valuePtr = UnsafeMutablePointer<mpv_node>.allocate(capacity: objDic.count)
-      let keyPtr = UnsafeMutablePointer<UnsafeMutablePointer<Int8>?>.allocate(capacity: objDic.count)
+      let keyPtr = UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>.allocate(capacity: objDic.count)
       var valueiPtr = valuePtr
       var keyiPtr = keyPtr
       // assign each key and value ptr
@@ -190,9 +200,9 @@ class MPVNode {
     }
   }
 
-  private static func allocString(_ str: String) -> UnsafeMutablePointer<Int8> {
+  private static func allocString(_ str: String) -> UnsafeMutablePointer<CChar> {
     let cstring = str.utf8CString
-    let ptr = UnsafeMutablePointer<Int8>.allocate(capacity: cstring.count)
+    let ptr = UnsafeMutablePointer<CChar>.allocate(capacity: cstring.count)
     var iptr = ptr
     for (_, n) in cstring.enumerated() {
       iptr.pointee = n
@@ -201,7 +211,7 @@ class MPVNode {
     return ptr
   }
 
-  private static func deallocString(_ ptr: UnsafeMutablePointer<Int8>) {
+  private static func deallocString(_ ptr: UnsafeMutablePointer<CChar>) {
     let str = String(cString: ptr)
     let len = str.cString(using: .utf8)!.count
     ptr.deinitialize(count: len)
